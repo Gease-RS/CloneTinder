@@ -1,77 +1,108 @@
-import React from 'react';
+import React, { useEffect, useState} from 'react';
+import { Link } from 'react-router-dom';
+import io from 'socket.io-client';
 
+import api from '../services/api';
 import logo from '../assets/logo.svg';
 import dislike from '../assets/dislike.svg';
 import like from '../assets/like.svg';
+import itsamatch from '../assets/itsamatch.png'
 
 import './Main.css';
 
 export default function Main({ match }) {
+    const [users, setUsers] = useState([]);
+    const [itsAMatch, setItsAMatch] = useState(null);
+
+    useEffect(() => {
+        async function loadUsers() {
+            const response = await api.get('/devs', {
+                headers: {
+                    user: match.params.id,
+                }
+            })
+
+            setUsers(response.data);
+        }
+
+        loadUsers();
+    }, [match.params.id]);
+
+    useEffect(() => {
+        const socket = io('http://localhost:3333', {
+            query: { user: match.params.id }
+        });
+
+        socket.on('match', dev => {
+            setItsAMatch(dev);
+          });
+        }, [match.params.id]);
+
+
+    async function handleLike(id) {
+        await api.post(`/devs/${id}/likes`, null, {
+            headers: { user: match.params.id },
+        })
+
+        setUsers(users.filter(user => user._id !== id))
+    }
+
+    async function handleDislike(id) {
+        await api.post(`/devs/${id}/dislikes`, null, {
+            headers: { user: match.params.id },
+        })
+
+        setUsers(users.filter(user => user._id !== id))
+    }
+
+
     return(
         <div className='main-container'>
-            <im src={logo} alt="Tindev" />
-            <ul>
-                <li>
-                    <img src={"https://avatars1.githubusercontent.com/u/15988500?v=4"} alt="" />
+            <Link to='/'>
+                <img src={logo} alt="Tindev" />
+            </Link>
+            { users.length > 0  ? (
+                <ul>
+                    {users.map(user => (
+                        <li key={user._id}>
+                            <img src={user.avatar} alt={user.name} />
+                            <footer>
+                                <strong>{user.name}</strong>
+                                <p>{user.bio}</p>
+                            </footer>
+                            <div className="buttons">
+                                <button type="button" onClick={() => handleDislike(user._id)}>
+                                <img src={dislike} alt="dislike" /> 
+                                </button>
+                                <button type="button" onClick={() => handleLike(user._id)}>
+                                <img src={like} alt="like" /> 
+                                </button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                ) : (
+                   <div> Acabou</div>
+                )}  
+                {itsAMatch && (
+                    <div className="match-container">
+                    <header>
+                        <img src={itsamatch} alt="It's a Match" />
+                    </header>
+                    <article>
+                        <img src={itsAMatch.avatar} alt={itsAMatch.name} />
+                        <h1>{itsAMatch.name}</h1>
+                        <p>{itsAMatch.bio}</p>
+                    </article>
                     <footer>
-                        <strong>Gease Oliveira da Rosa</strong>
-                        <p>Programador e Piloto de Drones</p>
+                        <button type="button" onClick={() => setItsAMatch(null)}>
+                        Close
+                        </button>
                     </footer>
-                    <div className="buttons">
-                        <button type="button">
-                           <img src={dislike} alt="dislike" /> 
-                        </button>
-                        <button type="button">
-                           <img src={like} alt="like" /> 
-                        </button>
+                    {/* <img src={users && users[0]} alt={users[0].name} /> */}
                     </div>
-                </li>
-                <li>
-                    <img src={"https://avatars1.githubusercontent.com/u/15988500?v=4"} alt="" />
-                    <footer>
-                        <strong>Gease Oliveira da Rosa</strong>
-                        <p>Programador e Piloto de Drones</p>
-                    </footer>
-                    <div className="buttons">
-                        <button type="button">
-                           <img src={dislike} alt="dislike" /> 
-                        </button>
-                        <button type="button">
-                           <img src={like} alt="like" /> 
-                        </button>
-                    </div>
-                </li>
-                <li>
-                    <img src={"https://avatars1.githubusercontent.com/u/15988500?v=4"} alt="" />
-                    <footer>
-                        <strong>Gease Oliveira da Rosa</strong>
-                        <p>Programador e Piloto de Drones</p>
-                    </footer>
-                    <div className="buttons">
-                        <button type="button">
-                           <img src={dislike} alt="dislike" /> 
-                        </button>
-                        <button type="button">
-                           <img src={like} alt="like" /> 
-                        </button>
-                    </div>
-                </li>
-                <li>
-                    <img src={"https://avatars1.githubusercontent.com/u/15988500?v=4"} alt="" />
-                    <footer>
-                        <strong>Gease Oliveira da Rosa</strong>
-                        <p>Programador e Piloto de Drones</p>
-                    </footer>
-                    <div className="buttons">
-                        <button type="button">
-                           <img src={dislike} alt="dislike" /> 
-                        </button>
-                        <button type="button">
-                           <img src={like} alt="like" /> 
-                        </button>
-                    </div>
-                </li>
-            </ul>
+              )}
         </div>
+       
     )
 }
